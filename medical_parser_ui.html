@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Document Parser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            font-size: 14px;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-weight: 500;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .confidence {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .confidence.high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence.medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence.low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .error {
+            display: none;
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            border-radius: 12px;
+            color: #721c24;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .review-flag {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Medical Document Parser</h1>
+        <p class="subtitle">Upload a medical document to extract patient information</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div class="upload-text">Drop PDF or image here</div>
+            <div class="upload-subtext">or click to browse</div>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+
+        <div class="file-name" id="fileName"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing document...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results">
+            <h2 style="margin-bottom: 20px; color: #333;">Extracted Information</h2>
+            
+            <div class="result-card">
+                <div class="result-label">Patient Name</div>
+                <div class="result-value">
+                    <span id="patientName">-</span>
+                    <span class="confidence" id="patientConfidence"></span>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <div class="result-label">Date of Birth</div>
+                <div class="result-value">
+                    <span id="dob">-</span>
+                    <span class="confidence" id="dobConfidence"></span>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <div class="result-label">Doctor Name</div>
+                <div class="result-value">
+                    <span id="doctorName">-</span>
+                    <span class="confidence" id="doctorConfidence"></span>
+                </div>
+            </div>
+
+            <div class="review-flag" id="reviewFlag" style="display: none;">
+                ⚠️ This document has been flagged for manual review due to low confidence scores.
+            </div>
+
+            <button class="btn" onclick="reset()">Parse Another Document</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            // Validate file type
+            const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            if (!validTypes.includes(file.type)) {
+                showError('Please upload a PDF or image file (JPG, PNG)');
+                return;
+            }
+
+            // Show file name
+            fileName.textContent = `Selected: ${file.name}`;
+            fileName.style.display = 'block';
+
+            // Hide previous results/errors
+            results.style.display = 'none';
+            error.style.display = 'none';
+
+            // Show loading
+            loading.style.display = 'block';
+
+            // Upload file
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:8080/parse', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+            } catch (err) {
+                showError(`Error: ${err.message}. Make sure the server is running on port 8080.`);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            // Populate results
+            document.getElementById('patientName').textContent = data.patient_name || 'Not found';
+            document.getElementById('dob').textContent = data.dob || 'Not found';
+            document.getElementById('doctorName').textContent = data.doctor_name || 'Not found';
+
+            // Set confidence badges
+            setConfidence('patientConfidence', data.confidence?.patient_name);
+            setConfidence('dobConfidence', data.confidence?.dob);
+            setConfidence('doctorConfidence', data.confidence?.doctor_name);
+
+            // Show review flag if needed
+            const reviewFlag = document.getElementById('reviewFlag');
+            reviewFlag.style.display = data.flag_for_review ? 'block' : 'none';
+
+            // Show results
+            results.style.display = 'block';
+        }
+
+        function setConfidence(elementId, score) {
+            const element = document.getElementById(elementId);
+            if (score === null || score === undefined) {
+                element.style.display = 'none';
+                return;
+            }
+
+            element.style.display = 'inline-block';
+            const percentage = Math.round(score * 100);
+            element.textContent = `${percentage}% confidence`;
+
+            if (score >= 0.7) {
+                element.className = 'confidence high';
+            } else if (score >= 0.4) {
+                element.className = 'confidence medium';
+            } else {
+                element.className = 'confidence low';
+            }
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            loading.style.display = 'none';
+        }
+
+        function reset() {
+            results.style.display = 'none';
+            fileName.style.display = 'none';
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  medical-parser:
+    build: .
+    container_name: medical-parser
+    ports:
+      - "8080:8080"
+    environment:
+      - OLLAMA_URL=http://ollama:11434/api/generate
+      - OLLAMA_MODEL=gemma-3
+      - OCR_DPI=300
+      - CONF_THRESHOLD=0.7
+    depends_on:
+      - ollama
+    volumes:
+      - ./temp:/tmp/medical-parser
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: medical-parser-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
